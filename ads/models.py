@@ -3,21 +3,27 @@ from django.db import models
 
 class Ad(models.Model):
     name = models.CharField(max_length=255)
-    author = models.CharField(max_length=255)
+    author = models.ForeignKey('users.User', on_delete=models.CASCADE)
     description = models.TextField()
     price = models.PositiveIntegerField()
-    address = models.CharField(max_length=255)
+    category = models.ForeignKey('ads.Category', on_delete=models.SET_NULL, null=True)
     is_published = models.BooleanField(default=False)
+    image = models.ImageField(upload_to='ads_images', blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Объявление'
+        verbose_name_plural = 'Объявления'
 
     def serialize(self):
         return {
             "id": self.id,
             "name": self.name,
-            "author": self.author,
+            "author": self.author.username,
             "description": self.description,
             "price": self.price,
-            "address": self.address,
-            "is_published": self.is_published
+            "is_published": self.is_published,
+            "category": self.category.name,
+            "image": self.image.url if self.image else None,
         }
 
     def __str__(self):
@@ -26,6 +32,10 @@ class Ad(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
+
+    class Meta:
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
 
     def serialize(self):
         return {
