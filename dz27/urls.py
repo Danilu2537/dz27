@@ -19,14 +19,13 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-from ads.views.ad import AdView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', AdView.as_view()),
     path('ad/', include('ads.urls.ad')),
     path('cat/', include('ads.urls.cat')),
-    path('user/', include('users.urls')),
+    path('user/', include('users.urls.user')),
+    path('location/', include('users.urls.location')),
 ]
 
 if settings.DEBUG:

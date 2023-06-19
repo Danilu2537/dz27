@@ -7,108 +7,47 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, ListView, CreateView, UpdateView, DeleteView
+from rest_framework.viewsets import ModelViewSet
 
 from ads.models import Ad, Category
+from ads.serializers import AdSerializer, AdListSerializer, AdDetailSerializer, AdCreateSerializer
 from users.models import User
 
-TOTAL_ON_PAGE = 10
 
+class AdViewSet(ModelViewSet):
+    queryset = Ad.objects.all().order_by('-price')
+    serializers = {
+        "list": AdListSerializer,
+        "retrieve": AdDetailSerializer,
+        "create": AdCreateSerializer,
+    }
+    default_serializer = AdSerializer
 
-@method_decorator(csrf_exempt, name='dispatch')
-class AdView(View):
-    def get(self, request):
-        return JsonResponse({"status": "ok"}, status=200)
+    def get_serializer_class(self):
+        return self.serializers.get(self.action, self.default_serializer)
 
+    def list(self, request, *args, **kwargs):
+        categories = request.GET.getlist('cat')
+        if categories:
+            self.queryset = self.queryset.filter(category__id__in=categories)
 
-@method_decorator(csrf_exempt, name='dispatch')
-class AdListView(ListView):
-    queryset = Ad.objects.order_by("-price")
-    fields = ['name', 'author', 'description', 'price', 'is_published', 'category']
+        text = request.GET.get('text')
+        if text:
+            self.queryset = self.queryset.filter(name__icontains=text)
 
-    def get(self, request, *args, **kwargs):
-        super().get(request, *args, **kwargs)
+        location = request.GET.get('location')
+        if location:
+            self.queryset = self.queryset.filter(author__locations__name__icontains=location)
 
-        paginator = Paginator(self.object_list, TOTAL_ON_PAGE)
-        page_number = request.GET.get('page')
-        ads_on_page = paginator.get_page(page_number)
+        price_from = request.GET.get('price_from')
+        if price_from and price_from.isdigit():
+            self.queryset = self.queryset.filter(price__gte=price_from)
 
-        return JsonResponse({"items": [ad.serialize()
-                                       for ad in ads_on_page],
-                             "total": paginator.count,
-                             "num_pages": paginator.num_pages, },
-                            status=200, safe=False)
+        price_to = request.GET.get('price_to')
+        if price_to and price_to.isdigit():
+            self.queryset = self.queryset.filter(price__lte=price_to)
 
-
-@method_decorator(csrf_exempt, name='dispatch')
-class AdDetailView(DetailView):
-    model = Ad
-    fields = ['name', 'author', 'description', 'price', 'is_published', 'category']
-
-    def get(self, request, *args, **kwargs):
-        return JsonResponse(
-            self.object.serialize(),
-            status=200)
-
-
-@method_decorator(csrf_exempt, name='dispatch')
-class AdCreateView(CreateView):
-    model = Ad
-    fields = ['name', 'author', 'description', 'price', 'is_published', 'category']
-    success_url = '/'
-
-    def post(self, request, *args, **kwargs):
-        super().post(request, *args, **kwargs)
-        ad_data = json.loads(request.body)
-
-        if 'author' in ad_data:
-            ad_data['author'] = get_object_or_404(User, pk=ad_data['author'])
-        if 'category' in ad_data:
-            ad_data['category'] = get_object_or_404(Category, pk=ad_data['category'])
-
-        return JsonResponse(Ad.objects.create(
-            **ad_data
-        ).serialize(), status=201)
-
-
-@method_decorator(csrf_exempt, name='dispatch')
-class AdUpdateView(UpdateView):
-    model = Ad
-    fields = ['name', 'author', 'description', 'price', 'is_published', 'category']
-
-    def patch(self, request, *args, **kwargs):
-        super().post(request, *args, **kwargs)
-        ad_data = json.loads(request.body)
-        if 'name' in ad_data:
-            self.object.name = ad_data['name']
-        if 'author' in ad_data:
-            self.object.author = get_object_or_404(User, pk=ad_data['author'])
-        if 'description' in ad_data:
-            self.object.description = ad_data['description']
-        if 'price' in ad_data:
-            self.object.price = ad_data['price']
-        if 'is_published' in ad_data:
-            self.object.is_published = ad_data['is_published']
-        if 'category' in ad_data:
-            self.object.category = get_object_or_404(Category, name=ad_data['category'])
-
-        self.object.save()
-
-        return JsonResponse(
-            self.object.serialize(),
-            status=200)
-
-
-@method_decorator(csrf_exempt, name='dispatch')
-class AdDeleteView(DeleteView):
-    model = Ad
-    fields = ['name', 'author', 'description', 'price', 'is_published', 'category']
-
-    def delete(self, request, *args, **kwargs):
-        super().post(request, *args, **kwargs)
-        self.object.delete()
-
-        return JsonResponse({"status": "ok"},
-                            status=200)
+        return super().list(request, *args, **kwargs)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
