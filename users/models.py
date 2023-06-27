@@ -1,3 +1,4 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import TextChoices
 
@@ -8,32 +9,21 @@ class UserRoles(TextChoices):
     MODERATOR = 'moderator', 'Модератор'
 
 
-class User(models.Model):
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
-    username = models.CharField(max_length=50)
-    password = models.CharField(max_length=50)
+class User(AbstractUser):
     age = models.PositiveSmallIntegerField()
     locations = models.ManyToManyField('Location')
     role = models.CharField(max_length=9, choices=UserRoles.choices, default=UserRoles.MEMBER)
+
+    def save(self, *args, **kwargs):
+        self.set_password(raw_password=self.password)
+        self.check_password(raw_password=self.password)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
-    def serialize(self):
-        return {
-            "id": self.id,
-            "first_name": self.first_name,
-            "last_name": self.last_name,
-            "username": self.username,
-            "age": self.age,
-            "locations": [location.name for location in self.locations.all()],
-            "role": self.role,
-        }
 
-    def __str__(self):
-        return self.username
 
 
 class Location(models.Model):
