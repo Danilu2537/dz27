@@ -1,10 +1,11 @@
+from django.core.validators import MinLengthValidator
 from django.db import models
 
 
 class Ad(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, validators=[MinLengthValidator(10)])
     author = models.ForeignKey('users.User', on_delete=models.CASCADE)
-    description = models.TextField()
+    description = models.TextField(null=True, blank=True)
     price = models.PositiveIntegerField()
     category = models.ForeignKey('ads.Category', on_delete=models.SET_NULL, null=True)
     is_published = models.BooleanField(default=False)
@@ -14,17 +15,6 @@ class Ad(models.Model):
         verbose_name = 'Объявление'
         verbose_name_plural = 'Объявления'
 
-    def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "author": self.author.username,
-            "description": self.description,
-            "price": self.price,
-            "is_published": self.is_published,
-            "category": self.category.name,
-            "image": self.image.url if self.image else None,
-        }
 
     def __str__(self):
         return self.name
@@ -45,16 +35,12 @@ class Selection(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=10, validators=[MinLengthValidator(5)], unique=True)
 
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
-    def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-        }
 
     def __str__(self):
         return self.name

@@ -3,6 +3,7 @@ from rest_framework.fields import SerializerMethodField
 from rest_framework.relations import SlugRelatedField
 
 from ads.models import Ad, Category, Selection
+from ads.validators import check_is_False
 from users.models import User
 from users.serializers import LocationSerializer
 
@@ -16,6 +17,7 @@ class AdSerializer(serializers.ModelSerializer):
 class AdCreateSerializer(serializers.ModelSerializer):
     author = SlugRelatedField(slug_field='username', queryset=User.objects.all())
     category = SlugRelatedField(slug_field='name', queryset=Category.objects.all())
+    is_published = serializers.BooleanField(validators=[check_is_False], required=False)
 
     class Meta:
         model = Ad
@@ -27,7 +29,7 @@ class AdListSerializer(serializers.ModelSerializer):
     locations = SerializerMethodField()
 
     def get_locations(self, obj):
-        return obj.author.locations.values_list('name', flat=True)
+        return obj.author.locations.values_list('name', flat=True) or None
 
     class Meta:
         model = Ad
@@ -61,4 +63,10 @@ class SelectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Selection
+        fields = '__all__'
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
         fields = '__all__'
